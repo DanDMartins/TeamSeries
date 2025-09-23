@@ -145,6 +145,94 @@ def adicionar_pontuacao(evento_id):
     
     # Buscar equipes do evento
 
+    cursor.execute("SELECT id, nome FROM equipe WHERE evento_id = ?", (evento_id,))
+    equipes = cursor.fetchall()
+    if not equipes:
+        print("Nenhuma equipe cadastrada para este evento.")
+        conn.close()
+        return
+    print("\nEquipes Disponíveis:")
+    for equipe in equipes:
+        print(f"{equipe[0]}. {equipe[1]}")
+    
+    print("Digite a colocação de cada equipe na prova (ou 'sair' para terminar):")
+    colocacoes = {}
+    for equipe in equipes:
+        while True:
+            try:
+                colocacao = int(input(f"{equipe[1]} ({equipe[2]}): "))
+                if colocacao < 1 or colocacao > len(equipes):
+                    print("Colocação inválida. Tente novamente.")
+                    continue
+                if colocacao in colocacoes.values():
+                    print("Colocação já atribuída. Tente novamente.")
+                    continue
+                colocacoes[equipe[0]] = colocacao
+                break
+            except ValueError:
+                print("Entrada inválida. Digite um número ou 'sair'.")
+
+    # Obter sistema de pontuação do evento
+    cursor.execute("SELECT sistema_pontuacao FROM evento WHERE id = ?", (evento_id,))
+    sistema = cursor.fetchone()[0]
+    # Exemplo: sistema = "1:100, 2:95, 3:90, 4:85, 5:80"
+    pontos_dict = {}
+    for item in sistema.split(','):
+        pos, pts = item.split(':')
+        pontos_dict[int(pos)] = int(pts)
+
+    # Salvar pontuações no DB
+    for equipe_id, colocacao in colocacoes.items():
+        pontos = pontos_dict.get(colocacao, 0)
+        cursor.execute(
+            "SELECT id FROM pontuacao WHERE equipe_id = ? AND prova_id = ?",
+            (equipe_id, prova_id)
+        )
+        existe = cursor.fetchone()
+        if existe:
+            cursor.execute(
+                "UPDATE pontuacao SET colocacao = ?, pontos = ? WHERE id = ?",
+                (colocacao, pontos, existe[0])
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO pontuacao (equipe_id, prova_id, colocacao, pontos) VALUES (?, ?, ?, ?)",
+                (equipe_id, prova_id, colocacao, pontos)
+            )
+    conn.commit()
+    conn.close()
+    print("Pontuações registradas com sucesso!")
+
+# Função para visualizar resultados por categoria
+def visualizar_resultados(evento_id):
+    conn = conectar()
+    cursor = conn.cursor()
+    # Buscar equipes e categorias
+    cursor.execute("SELECT id, nome, categoria FROM equipe WHERE evento_id = ?", (evento_id,))
+    equipes = cursor.fetchall()
+    if not equipes:
+        print("Nenhuma equipe cadastrada para este evento.")
+        conn.close()
+        return
+    
+    # Inicializar dicionários de pontuação por categoria
+    resultados = {'RX': [], 'SC': []}
+    for equipe in equipes:
+        equipe_id, nome, categoria = equipe
+        cursor.execute("SELECT SUM(pontos) FROM pontuacao WHERE equipe_id = ?", (equipe_id,))
+        total = cursor.fetchone()[0] or 0
+        resultados[categoria].append((nome, total))
+
+    # Exibir ranking RX
+    print("\n--- Ranking RX ---")
+    for nome, total in sorted(resultados['RX'], key=lambda x: x[1], reverse=True):
+        print(f"{nome}: {total} pontos")
+    # Exibir ranking SC
+    print("\n--- Ranking SC ---")
+    for nome, total in sorted(resultados['SC'], key=lambda x: x[1], reverse=True):
+        print(f"{nome}: {total} pontos")
+    conn.close()
+
 
 
 
