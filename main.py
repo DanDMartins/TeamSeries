@@ -3,81 +3,9 @@ from db import criar_tabelas, conectar
 # Cria as tabelas do banco de dados (caso não existam)
 criar_tabelas()
 
-# Iniciar o Menu
-
-def menu_principal():
-    while True:
-        print("\n--- TEAMSERIES - Menu Principal ---")
-        print("1. Cadastrar Evento")
-        print("2. Selecionar Evento para Gerenciar")
-        print("3. Sair")
-        escolha = input("Escolha uma opção: ")
-
-        if escolha == '1':
-            cadastro_evento()
-        elif escolha == '2':
-            evento_id = selecionar_evento()
-            if evento_id:
-                menu_eventos(evento_id)
-        elif escolha == '3':
-            print("Saindo do programa. Até mais!")
-            break
-        else:
-            print("Opção inválida. Tente novamente.")
-
-def cadastro_evento():
-    nome = input("Digite o Nome do Evento: ")
-    print("Selecione o Sistema de Pontuação: (ex: 1:100, 2:95, 3:90, ...)")
-    sistema = input("Pontuação: ")
-    num_provas = int(input("Digite o Número de Provas: "))
-
-    conn = conectar()
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO evento (nome, sistema_pontuacao, num_provas) VALUES (?, ?, ?)", (nome, sistema, num_provas))
-    evento_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
-    print("Evento cadastrado com sucesso!")
-
-    print("Agora, cadastre as equipes para este evento.")
-    cadastrar_equipe(evento_id)
-
-    print("Agora, cadastre as provas para este evento.")
-    cadastrar_provas(evento_id, num_provas)
-
-if __name__ == "__main__":
-    criar_tabelas()
-    menu_principal()
-
-def cadastrar_provas(evento_id, num_provas):
-    for i in range(1, num_provas + 1):
-        nome_prova = input(f"Digite o nome da Prova {i}: ")
-        conn = conectar()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO prova (nome, evento_id) VALUES (?, ?)", (nome_prova, evento_id))
-        conn.commit()
-        conn.close()
-        print(f"Prova '{nome_prova}' cadastrada com sucesso!")
-
-def cadastrar_equipe(evento_id):
-    while True:
-        nome = input("Digite o Nome da Equipe: ")
-        if not nome:
-            print("É necessário criar um nome pra equipe.")
-            break
-        categoria = input("Digite a Categoria (RX/SC): ").strip().upper()
-        if categoria not in ['RX', 'SC']:
-            print("Categoria inválida. Use 'RX' ou 'SC'.")
-            continue
-
-        conn = conectar()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO equipe (nome, categoria, evento_id) VALUES (?, ?, ?)", (nome, categoria, evento_id))
-        conn.commit()
-        conn.close()
-        print("Equipe '{nome}' cadastrada com sucesso!")
-
+# 1. Selecionar Evento
 def selecionar_evento():
+
     conn = conectar()
     cursor = conn.cursor()
     cursor.execute("SELECT id, nome FROM evento")
@@ -101,23 +29,66 @@ def selecionar_evento():
         except ValueError:
             print("Entrada inválida. Digite um número.")
 
-def menu_eventos(evento_id):
+# 2. Cadastrar Equipe
+def cadastrar_equipe(evento_id):
+    equipes_cadastradas = 0
     while True:
-        print("\n--- Gerenciamento de Eventos ---")
-        print("1. Adicionar/Editar pontuação de prova")
-        print("2. Visualizar resultados por categoria")
-        print("3. Voltar ao Menu Principal")
-        escolha = input("Escolha uma opção: ")
-
-        if escolha == '1':
-            adicionar_pontuacao(evento_id)
-        elif escolha == '2':
-            visualizar_resultados(evento_id)
-        elif escolha == '3':
+        nome = input("Digite o Nome da Equipe (ou Enter para finalizar, ou 'sair' para cancelar): ")
+        if nome.lower() == 'sair':
+            print("Cadastro de equipes cancelado.")
             break
-        else:
-            print("Opção inválida. Tente novamente.")
+        if not nome:
+            if equipes_cadastradas == 0:
+                print("Nenhuma equipe cadastrada. Retornando ao menu.")
+                break
+            else:
+                break
+        categoria = input("Digite a Categoria (RX/SC): ").strip().upper()
+        if categoria not in ['RX', 'SC']:
+            print("Categoria inválida. Use 'RX' ou 'SC'.")
+            continue
 
+        conn = conectar()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO equipe (nome, categoria, evento_id) VALUES (?, ?, ?)", (nome, categoria, evento_id))
+        conn.commit()
+        conn.close()
+        equipes_cadastradas += 1
+        print(f"Equipe '{nome}' cadastrada com sucesso!")
+
+# 3. Cadastrar Provas
+def cadastrar_provas(evento_id, num_provas):
+    for i in range(1, num_provas + 1):
+        nome_prova = input(f"Digite o nome da Prova {i}: ")
+        conn = conectar()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO prova (nome, evento_id) VALUES (?, ?)", (nome_prova, evento_id))
+        conn.commit()
+        conn.close()
+        print(f"Prova '{nome_prova}' cadastrada com sucesso!")
+
+#. 4 - Cadastrar Eventos
+def cadastro_evento():
+    nome = input("Digite o Nome do Evento: ")
+    print("Selecione o Sistema de Pontuação: (ex: 1:100, 2:95, 3:90, ...)")
+    sistema = input("Pontuação: ")
+    num_provas = int(input("Digite o Número de Provas: "))
+
+    conn = conectar()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO evento (nome, sistema_pontuacao, num_provas) VALUES (?, ?, ?)", (nome, sistema, num_provas))
+    evento_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    print("Evento cadastrado com sucesso!")
+
+    print("Agora, cadastre as equipes para este evento.")
+    cadastrar_equipe(evento_id)
+
+    print("Agora, cadastre as provas para este evento.")
+    cadastrar_provas(evento_id, num_provas)
+
+#. 5 - Adicionar/Editar pontuação de prova
 def adicionar_pontuacao(evento_id):
     # Buscar provas do evento
     conn = conectar()
@@ -203,7 +174,7 @@ def adicionar_pontuacao(evento_id):
     conn.close()
     print("Pontuações registradas com sucesso!")
 
-# Função para visualizar resultados por categoria
+#. 6 - Visualizar resultados por categoria
 def visualizar_resultados(evento_id):
     conn = conectar()
     cursor = conn.cursor()
@@ -233,42 +204,51 @@ def visualizar_resultados(evento_id):
         print(f"{nome}: {total} pontos")
     conn.close()
 
+#. 7 - Menu dos Eventos
+def menu_eventos(evento_id):
+    while True:
+        print("\n--- Gerenciamento de Eventos ---")
+        print("1. Adicionar/Editar pontuação de prova")
+        print("2. Visualizar resultados por categoria")
+        print("3. Voltar ao Menu Principal")
+        escolha = input("Escolha uma opção: ")
 
+        if escolha == '1':
+            adicionar_pontuacao(evento_id)
+        elif escolha == '2':
+            visualizar_resultados(evento_id)
+        elif escolha == '3':
+            break
+        else:
+            print("Opção inválida. Tente novamente.")
 
+#. 8 - Menu Principal
+def menu_principal():
+    while True:
+        print("\n--- TEAMSERIES - Menu Principal ---")
+        print("1. Cadastrar Evento")
+        print("2. Selecionar Evento para Gerenciar")
+        print("3. Sair")
+        escolha = input("Escolha uma opção: ")
 
+        if escolha == '1':
+            cadastro_evento()
+        elif escolha == '2':
+            evento_id = selecionar_evento()
+            if evento_id is not None:
+                menu_eventos(evento_id)
+            else:
+                print("Nenhum evento disponível.")
+        elif escolha == '3':
+            print("Saindo do programa. Até mais!")
+            break
+        else:
+            print("Opção inválida. Tente novamente.")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#. 9 - Iniciar o Programa
+if __name__ == "__main__":
+    criar_tabelas()
+    menu_principal()
 
 
 
