@@ -1,4 +1,5 @@
 from db import criar_tabelas, conectar
+import streamlit as st
 
 # Cria as tabelas do banco de dados (caso não existam)
 criar_tabelas()
@@ -87,6 +88,32 @@ def cadastro_evento():
 
     print("Agora, cadastre as provas para este evento.")
     cadastrar_provas(evento_id, num_provas)
+
+# ...existing code...
+
+def cadastro_evento_streamlit():
+    st.header("Cadastrar Novo Evento")
+    nome = st.text_input("Nome do Evento")
+    sistema = st.text_input("Sistema de Pontuação (ex: 1:100, 2:95, 3:90, ...)")
+    num_provas = st.number_input("Número de Provas", min_value=1, step=1)
+
+    if st.button("Cadastrar Evento"):
+        if not nome or not sistema or num_provas < 1:
+            st.warning("Preencha todos os campos corretamente.")
+        else:
+            conn = conectar()
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO evento (nome, sistema_pontuacao, num_provas) VALUES (?, ?, ?)",
+                (nome, sistema, num_provas)
+            )
+            evento_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+            st.success("Evento cadastrado com sucesso!")
+            st.info("Agora cadastre as equipes e provas para este evento.")
+
+# ...existing code...
 
 #. 5 - Adicionar/Editar pontuação de prova
 def adicionar_pontuacao(evento_id):
@@ -246,80 +273,127 @@ def menu_principal():
             print("Opção inválida. Tente novamente.")
 
 #. 9 - Iniciar o Programa
-if __name__ == "__main__":
-    criar_tabelas()
-    menu_principal()
 
+st.title("TeamSeries - Menu Principal")
 
-
-
-
-
-'''# Dicionario para pontuacao
-pontuacao = {1: 100, 2: 95, 3: 90, 4: 85, 5: 80}
-provas = ["Prova 1.A", "Prova 1.B"]
-
-# Lista para os Times
-times_rx = ["Time Bianca", "Time Marcella", "Time Julia", "Time Ludimila"]
-times_sc = ["Time Leticia", "Time Amanda", "Time Marco", "Time Sara"]
-
-# Dicionario para pontuacao total
-pontuacao_total = {
-    "Time Bianca": 0,
-    "Time Marcella": 0,
-    "Time Julia": 0,
-    "Time Ludimila": 0,
-    "Time Leticia": 0,
-    "Time Amanda": 0,
-    "Time Marco": 0,
-    "Time Sara": 0
-}
-
-for prova in provas:
-    print(f"\n--- {prova} ---")
-    
-    # Coletar resultados para RX
-    print("\nResultados RX:")
-    for i in range(1, 5):
-        while True:
-            atleta = input(f"Digite o nome do atleta que ficou em {i}º lugar (RX): ")
-            if atleta in times_rx:
-                pontuacao_total[atleta] += pontuacao[i]
-                break
-            else:
-                print("Atleta não encontrado no Time RX. Tente novamente.")
-    
-    # Coletar resultados para SC
-    print("\nResultados SC:")
-    for i in range(1, 5):
-        while True:
-            atleta = input(f"Digite o nome do atleta que ficou em {i}º lugar (SC): ")
-            if atleta in times_sc:
-                pontuacao_total[atleta] += pontuacao[i]
-                break
-            else:
-                print("Atleta não encontrado no Time SC. Tente novamente.")
-
-# --- Exibir o Resultado Final ---
-print("\n--- Ranking Final de Pontuação RX ---")
-print("-" * 35)
-sorted_rx = sorted(
-    [(time, pontuacao_total[time]) for time in times_rx],
-    key=lambda x: x[1],
-    reverse=True
+opcao = st.sidebar.radio(
+    "Escolha uma opção:",
+    ["Cadastrar Evento", "Selecionar Evento para Gerenciar", "Sair"]
 )
-for time, pontos in sorted_rx:
-    print(f"{time}: {pontos} pontos")
-print(f"\nO vencedor RX é o {sorted_rx[0][0]} com {sorted_rx[0][1]} pontos!")
 
-print("\n--- Ranking Final de Pontuação SC ---")
-print("-" * 35)
-sorted_sc = sorted(
-    [(time, pontuacao_total[time]) for time in times_sc],
-    key=lambda x: x[1],
-    reverse=True
-)
-for time, pontos in sorted_sc:
-    print(f"{time}: {pontos} pontos")
-print(f"\nO vencedor SC é o {sorted_sc[0][0]} com {sorted_sc[0][1]} pontos!")
-'''
+# Cadastro de Eventos via Streamlit
+
+def cadastro_evento_streamlit():
+    st.header("Cadastrar Novo Evento")
+    nome = st.text_input("Nome do Evento")
+    sistema = st.text_input("Sistema de Pontuação (ex: 1:100, 2:95, 3:90, ...)")
+    num_provas = st.number_input("Número de Provas", min_value=1, step=1)
+
+    if st.button("Cadastrar Evento"):
+        if not nome or not sistema or num_provas < 1:
+            st.warning("Preencha todos os campos corretamente.")
+        else:
+            conn = conectar()
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO evento (nome, sistema_pontuacao, num_provas) VALUES (?, ?, ?)",
+                (nome, sistema, num_provas)
+            )
+            evento_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+            st.success("Evento cadastrado com sucesso!")
+            st.info("Agora cadastre as equipes e provas para este evento.")
+
+# Selecionar Evento via Streamlit
+
+def selecionar_evento_streamlit():
+    conn = conectar()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, nome FROM evento")
+    eventos = cursor.fetchall()
+    conn.close()
+
+    if not eventos:
+        st.warning("Nenhum evento cadastrado.")
+        return None
+    
+    opcoes = {f"{evento[1]} (ID: {evento[0]})": evento[0] for evento in eventos}
+    escolhido = st.selectbox("Selecione o Evento que deseja gerenciar:", list(opcoes.keys()))
+    if escolhido:
+        evento_id = opcoes[escolhido]
+        st.success(f"Evento '{escolhido}' selecionado.")
+        return evento_id
+    return None
+
+# Visualizar resultados via Streamlit
+
+def visualizar_resultados_streamlit(evento_id):
+    conn = conectar()
+    cursor = conn.cursor()
+    # Buscar equipes e categorias
+    cursor.execute("SELECT id, nome, categoria FROM equipe WHERE evento_id = ?", (evento_id,))
+    equipes = cursor.fetchall()
+    if not equipes:
+        st.warning("Nenhuma equipe cadastrada para este evento.")
+        conn.close()
+        return
+    
+    # Inicializar dicionários de pontuação por categoria
+    resultados = {'RX': [], 'SC': []}
+    for equipe in equipes:
+        equipe_id, nome, categoria = equipe
+        cursor.execute("SELECT SUM(pontos) FROM pontuacao WHERE equipe_id = ?", (equipe_id,))
+        total = cursor.fetchone()[0] or 0
+        resultados[categoria].append((nome, total))
+
+    # Exibir ranking RX
+    st.subheader("Ranking RX")
+    for nome, total in sorted(resultados['RX'], key=lambda x: x[1], reverse=True):
+        st.write(f"{nome}: {total} pontos")
+    # Exibir ranking SC
+    st.subheader("Ranking SC")
+    for nome, total in sorted(resultados['SC'], key=lambda x: x[1], reverse=True):
+        st.write(f"{nome}: {total} pontos")
+    conn.close()
+
+# Menu de Gerenciamento de eventos -- todo adaptar para Streamlit depois
+
+def menu_eventos_streamlit(evento_id):
+    # buscar nome do evento
+    conn = conectar()
+    cursor = conn.cursor()  
+    cursor.execute("SELECT nome FROM evento WHERE id = ?", (evento_id,))
+    evento_nome = cursor.fetchone()
+    conn.close()
+    nome_evento = evento_nome[0] if evento_nome else f"ID {evento_id}"
+
+    st.header(f"Gerenciamento do Evento: {nome_evento}")
+
+    escolha = st.radio(
+        "Escolha uma opção:", [
+            "Adicionar/Editar pontuação de prova",
+            "Visualizar resultados por categoria",
+            "Voltar ao Menu Principal"
+        ])
+    if escolha == "Adicionar/Editar pontuação de prova":
+        visualizar_resultados_streamlit(evento_id)
+    elif escolha == "Visualizar resultados por categoria":
+        st.info("Funcionalidade de adicionar/editar pontuação via Streamlit ainda não implementada.")
+    elif escolha == "Voltar ao Menu Principal":
+        st.info("Retornando ao Menu Principal.")
+
+# Menu Principal Streamlit
+
+if opcao == "Cadastrar Evento":
+    cadastro_evento_streamlit()
+elif opcao == "Selecionar Evento para Gerenciar":
+    evento_id = selecionar_evento_streamlit()
+    if evento_id:
+        # chama o menu do evento (sub-menu) em vez de apenas mostrar um info
+        menu_eventos_streamlit(evento_id)
+elif opcao == "Sair":
+    st.write("Obrigado por usar o TeamSeries!")
+
+
+
